@@ -9,7 +9,16 @@
 const { spawn } = require('node:child_process');
 const http = require('node:http');
 const fs = require('node:fs');
-const WebSocket = require('/Users/ngocp/goterm-workspace/games/node_modules/ws');
+// ws: thử gói cài riêng trước, rồi tới node_modules của platform (khi game nằm
+// trong repo games/). Clone lẻ mà thiếu cả hai thì nói rõ phải làm gì.
+let WebSocket;
+for (const p of ['ws', '../../node_modules/ws']) {
+  try { WebSocket = require(p); break; } catch (e) { /* thử tiếp */ }
+}
+if (!WebSocket) {
+  console.error('Thiếu gói "ws" (chỉ harness cần, game thì không).\n  npm i --no-save ws');
+  process.exit(2);
+}
 
 const URL = process.argv[2] || 'http://127.0.0.1:8790/';
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
