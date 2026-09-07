@@ -1,5 +1,7 @@
 # Block Drop
 
+**Chơi ngay: https://drop.bomclaw.org**
+
 Xếp khối kiểu Tetris nhưng **điều khiển bằng thanh kéo dưới màn hình**: kéo núm vàng
 để chọn cột, khối đang rơi tự trượt tới đó rồi thả xuống. Bên phải là **bạn đồng hành
 hologram** — cổ vũ, khen, nhắc nhở theo từng pha bạn đánh.
@@ -67,4 +69,11 @@ node test/playtest.js     # cổng G2/G3 bằng Chrome headless: boot, 390×844,
 kiểm tra state **đổi** — đây là cổng bắt lỗi "vẽ đẹp mà không tương tác". Nó cũng chạy một
 bot 90 lượt để chắc chắn dọn được hàng, có combo và nhặt được lá.
 
-Trên platform: `http://127.0.0.1:8090/g/blockdrop/`.
+Trên platform: `http://127.0.0.1:8090/g/blockdrop/` · công khai: https://drop.bomclaw.org
+
+Game được phục vụ bởi [platform Arcade](https://github.com/phanngoc) (backend dùng chung cho
+nhiều game: guest auth, bảng xếp hạng, save cloud). Thêm game vào platform = 1 row DB +
+1 dòng ingress cloudflared + 1 CNAME, không cần service riêng.
+
+Nhưng game **không phụ thuộc** platform: `arcade-bridge.js` nuốt mọi lỗi, không có platform
+thì kỷ lục lưu bằng `localStorage` và game chơi y như cũ. Chạy `node server.js` là đủ.
