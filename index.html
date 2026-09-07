@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#180f33">
+<title>Block Drop — Kéo thanh, thả khối</title>
+<meta name="description" content="Block Drop: xếp khối bằng thanh kéo dưới màn hình, dọn hàng lấy PERFECT, có bạn đồng hành hologram cổ vũ.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23231a4d'/><rect x='6' y='6' width='9' height='9' rx='2' fill='%23f2762a'/><rect x='17' y='6' width='9' height='9' rx='2' fill='%2335d0e0'/><rect x='6' y='17' width='9' height='9' rx='2' fill='%238a4ff5'/><rect x='17' y='17' width='9' height='9' rx='2' fill='%23f5b53d'/></svg>">
+<style>
+  :root{
+    --bg:#140d2b; --bg2:#241540;
+    --panel:#211a45; --panel2:#2b2159; --panel-line:#3d3273;
+    --ink:#f4efff; --muted:#a99ddb; --muted2:#7c6fb0;
+    --gold:#f0b552; --gold2:#e08a2a; --gold-ink:#3d2405;
+    --orange:#f8a13a; --orange2:#ef6c1f;
+    --holo:#7fe9ff; --holo2:#b98cff;
+    --leaf:#57d97a;
+    --danger:#ff5d6e;
+    --board:#221a4b; --board-line:#2e2560; --board-edge:#f0a03c;
+    --gap:8px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{margin:0; height:100%; overflow:hidden}
+  body{
+    background:
+      radial-gradient(90% 50% at 50% 0%, #3a2258 0%, rgba(58,34,88,0) 60%),
+      radial-gradient(70% 45% at 8% 96%, #6a3a1c 0%, rgba(106,58,28,0) 55%),
+      radial-gradient(70% 45% at 96% 88%, #23504a 0%, rgba(35,80,74,0) 55%),
+      linear-gradient(#180f33, #0e0921 70%);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif;
+    display:flex; justify-content:center;
+    user-select:none; -webkit-user-select:none; touch-action:manipulation;
+  }
+  .wrap{
+    width:100%; max-width:470px; height:100%;
+    display:flex; flex-direction:column; gap:var(--gap);
+    padding:max(6px,env(safe-area-inset-top)) 10px calc(6px + env(safe-area-inset-bottom));
+  }
+
+  /* ── header ─────────────────────────────────────────── */
+  header{display:flex; align-items:center; gap:8px; height:34px; flex:0 0 auto}
+  .brand{display:flex; align-items:center; gap:7px; font-weight:900; letter-spacing:1.2px; font-size:15px}
+  .brand .mk{
+    width:24px;height:24px;border-radius:7px;
+    background:linear-gradient(135deg,var(--orange),#ef4c8e 55%,#8a4ff5);
+    box-shadow:0 3px 12px rgba(239,108,31,.45);
+    display:grid;place-items:center;font-size:12px
+  }
+  .brand b{background:linear-gradient(90deg,#ffd489,#ff9d5c);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .grow{flex:1}
+  .ibtn{
+    width:34px;height:34px;border-radius:10px;border:1px solid var(--panel-line);
+    background:rgba(33,26,69,.85); color:var(--ink); font-size:15px; cursor:pointer;
+    display:grid;place-items:center; transition:transform .12s, opacity .12s
+  }
+  .ibtn:active{transform:scale(.9)}
+  .ibtn.off{opacity:.45}
+
+  /* ── stat chips ─────────────────────────────────────── */
+  .stats{display:flex; gap:var(--gap); flex:0 0 auto}
+  .chip{
+    flex:1; min-width:0; border-radius:12px; padding:5px 8px 6px;
+    background:linear-gradient(#252048,#1d1840); border:1px solid var(--panel-line);
+    display:flex; flex-direction:column; align-items:center; gap:1px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.05)
+  }
+  .chip .k{font-size:9px; letter-spacing:1.1px; color:var(--muted2); text-transform:uppercase; font-weight:700}
+  .chip .v{font-size:19px; font-weight:900; font-variant-numeric:tabular-nums; line-height:1.05}
+  .chip.hit .v{animation:pop .35s ease-out}
+  @keyframes pop{0%{transform:scale(1)}35%{transform:scale(1.28); color:var(--gold)}100%{transform:scale(1)}}
+
+  /* ── level bar + leaf ───────────────────────────────── */
+  .bars{display:flex; gap:var(--gap); align-items:stretch; flex:0 0 auto}
+  .lv{
+    flex:1; min-width:0; border-radius:12px; padding:5px 10px 7px;
+    background:linear-gradient(#241d4a,#1b163b); border:1px solid var(--panel-line);
+    display:flex; flex-direction:column; justify-content:center; gap:5px
+  }
+  .lv .t{font-size:10px; letter-spacing:.5px; color:var(--muted); font-weight:700; display:flex; gap:6px}
+  .lv .t b{color:var(--ink)}
+  .lv .track{height:7px; border-radius:99px; background:#120e29; overflow:hidden; box-shadow:inset 0 1px 2px rgba(0,0,0,.5)}
+  .lv .track i{
+    display:block; height:100%; width:0%; border-radius:99px;
+    background:linear-gradient(90deg,#ffd06a,#f0932c); transition:width .35s ease-out;
+    box-shadow:0 0 10px rgba(240,181,82,.6)
+  }
+  .leafchip{
+    flex:0 0 auto; border-radius:12px; padding:4px 11px; cursor:pointer;
+    background:linear-gradient(#1f4331,#16321f); border:1px solid #2f7a4b; color:var(--ink);
+    display:flex; align-items:center; gap:7px; font-family:inherit;
+    transition:transform .12s, box-shadow .2s
+  }
+  .leafchip:active{transform:scale(.94)}
+  .leafchip .ic{font-size:15px; filter:drop-shadow(0 0 4px rgba(87,217,122,.8))}
+  .leafchip b{font-size:16px; font-weight:900; color:var(--gold); font-variant-numeric:tabular-nums}
+  .leafchip .frac{font-size:11px; color:#8fd8a6; font-variant-numeric:tabular-nums}
+  .leafchip.ready{box-shadow:0 0 0 1px #57d97a, 0 0 16px rgba(87,217,122,.55); animation:leafPulse 1.4s infinite}
+  @keyframes leafPulse{0%,100%{box-shadow:0 0 0 1px #57d97a,0 0 10px rgba(87,217,122,.4)}50%{box-shadow:0 0 0 1px #8fffb0,0 0 22px rgba(87,217,122,.8)}}
+
+  /* ── stage: board + rail ────────────────────────────── */
+  .stage{flex:1 1 auto; display:flex; gap:var(--gap); justify-content:center; align-items:center; min-height:0}
+  .boardbox{
+    position:relative; border-radius:10px; overflow:hidden;
+    border:2px solid var(--board-edge);
+    box-shadow:0 0 0 1px rgba(0,0,0,.5), 0 10px 34px rgba(0,0,0,.5), inset 0 0 40px rgba(0,0,0,.35);
+    background:var(--board); flex:0 0 auto;
+  }
+  .boardbox.combo{border-color:#ffd06a; box-shadow:0 0 0 1px rgba(0,0,0,.5),0 0 26px rgba(255,208,106,.55),0 10px 34px rgba(0,0,0,.5)}
+  .boardbox.danger{border-color:var(--danger); animation:dangerEdge .8s infinite}
+  @keyframes dangerEdge{0%,100%{box-shadow:0 0 0 1px rgba(0,0,0,.5),0 0 14px rgba(255,93,110,.35)}50%{box-shadow:0 0 0 1px rgba(0,0,0,.5),0 0 30px rgba(255,93,110,.85)}}
+  #board{display:block; touch-action:none}
+
+  .rail{display:flex; flex-direction:column; gap:6px; width:100px; flex:0 0 auto; min-height:0}
+  .rail-lbl{font-size:9px; letter-spacing:1.4px; color:var(--muted2); text-align:center; font-weight:800}
+  .panel{
+    border-radius:12px; background:linear-gradient(#231c4b,#191439);
+    border:1px solid var(--panel-line); box-shadow:inset 0 1px 0 rgba(255,255,255,.05)
+  }
+  .panel.next{padding:4px; display:grid; place-items:center; flex:0 0 auto}
+  #next{display:block}
+  .panel.combo{
+    padding:5px 4px 6px; display:flex; flex-direction:column; align-items:center; gap:0;
+    border-color:var(--gold2); flex:0 0 auto
+  }
+  .panel.combo .k{font-size:9px; letter-spacing:1.1px; color:var(--gold); font-weight:800}
+  .panel.combo b{font-size:20px; font-weight:900; color:var(--gold); font-variant-numeric:tabular-nums; line-height:1.1}
+  .panel.combo.on{animation:comboGlow .6s ease-out}
+  @keyframes comboGlow{0%{transform:scale(1)}40%{transform:scale(1.16); box-shadow:0 0 22px rgba(240,181,82,.8)}100%{transform:scale(1)}}
+
+  .drop{
+    flex:0 0 auto; border:0; border-radius:13px; padding:8px 4px 9px; cursor:pointer;
+    background:linear-gradient(#ffb54d,var(--orange2)); color:#fff;
+    font-family:inherit; font-size:13px; font-weight:900; letter-spacing:1.3px;
+    display:flex; flex-direction:column; align-items:center; gap:1px;
+    box-shadow:0 4px 0 #b64a12, 0 8px 20px rgba(239,108,31,.45), inset 0 1px 0 rgba(255,255,255,.5);
+    text-shadow:0 1px 2px rgba(0,0,0,.35)
+  }
+  .drop .ar{font-size:19px; line-height:1}
+  .drop:active{transform:translateY(3px); box-shadow:0 1px 0 #b64a12, 0 4px 12px rgba(239,108,31,.4)}
+
+  /* ── hologram ───────────────────────────────────────── */
+  .holo{
+    /* Ghim đáy rail như ảnh mẫu: NEXT/COMBO/DROP ở trên, card cổ vũ ở dưới,
+       khoảng giữa để trống cho nền lộ ra. Cao cố định để mascot không bị
+       letterbox trong một khung quá cao. */
+    flex:0 0 auto; margin-top:auto; height:164px; position:relative; overflow:hidden;
+    border-radius:12px; border:1px solid rgba(127,233,255,.45);
+    background:
+      linear-gradient(180deg, rgba(127,233,255,.16), rgba(185,140,255,.13) 60%, rgba(127,233,255,.05)),
+      linear-gradient(#1a1740,#141033);
+    box-shadow:0 0 18px rgba(127,233,255,.28), inset 0 0 26px rgba(127,233,255,.16);
+    display:flex; flex-direction:column; align-items:center; justify-content:flex-end;
+    padding:4px 3px 6px;
+  }
+  .holo::after{  /* scanlines + quét sáng */
+    content:''; position:absolute; inset:0; pointer-events:none;
+    background:
+      repeating-linear-gradient(0deg, rgba(255,255,255,.10) 0 1px, rgba(0,0,0,0) 1px 3px),
+      linear-gradient(180deg, rgba(127,233,255,0) 40%, rgba(127,233,255,.20) 50%, rgba(127,233,255,0) 60%);
+    background-size:100% 3px, 100% 260%;
+    animation:scan 3.6s linear infinite;
+    mix-blend-mode:screen; opacity:.55
+  }
+  @keyframes scan{0%{background-position:0 0, 0 -160%}100%{background-position:0 3px, 0 160%}}
+  .holo .base{  /* bệ chiếu + chùm sáng */
+    position:absolute; left:50%; bottom:-4px; transform:translateX(-50%);
+    width:78%; height:16px; border-radius:50%;
+    background:radial-gradient(closest-side, rgba(127,233,255,.85), rgba(127,233,255,0));
+    filter:blur(1px); animation:baseFlicker 2.2s infinite
+  }
+  @keyframes baseFlicker{0%,100%{opacity:.75}45%{opacity:1}70%{opacity:.6}}
+  .holo .fig{position:relative; z-index:2; width:100%; display:grid; place-items:center; flex:1 1 auto; min-height:0}
+  .holo svg{width:100%; height:100%; max-height:none; filter:drop-shadow(0 0 6px rgba(127,233,255,.85)); animation:hoFloat 3.4s ease-in-out infinite}
+  @keyframes hoFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+  .holo .say{
+    position:relative; z-index:3; width:100%; text-align:center;
+    font-size:10px; font-weight:800; line-height:1.25; letter-spacing:.2px;
+    color:#eafcff; text-shadow:0 0 8px rgba(127,233,255,.9);
+    min-height:2.5em; display:flex; align-items:center; justify-content:center;
+    padding:0 2px; word-break:break-word
+  }
+  .holo.flash{animation:hoFlash .5s ease-out}
+  @keyframes hoFlash{0%{box-shadow:0 0 18px rgba(127,233,255,.3)}30%{box-shadow:0 0 44px rgba(255,255,255,.95), inset 0 0 40px rgba(255,255,255,.5)}100%{box-shadow:0 0 18px rgba(127,233,255,.3)}}
+  .holo.glitch svg{animation:hoGlitch .32s steps(2) 2}
+  @keyframes hoGlitch{0%{transform:translate(0)}25%{transform:translate(-2px,1px)}50%{transform:translate(2px,-1px)}75%{transform:translate(-1px,-1px)}100%{transform:translate(0)}}
+  .holo .sparks{position:absolute; inset:0; z-index:4; pointer-events:none}
+  .holo .sp{
+    position:absolute; width:4px; height:4px; border-radius:99px; background:#fff;
+    box-shadow:0 0 8px #7fe9ff; opacity:0
+  }
+  .holo.warm{border-color:rgba(255,190,120,.55); box-shadow:0 0 20px rgba(255,170,90,.35), inset 0 0 26px rgba(255,170,90,.18)}
+  .holo.warm svg{filter:drop-shadow(0 0 6px rgba(255,190,120,.9))}
+
+  /* mascot: bộ phận đổi theo tư thế */
+  .mo{display:none}
+  .p-idle  .mo.idle,  .p-cheer .mo.cheer, .p-wow .mo.wow,
+  .p-worry .mo.worry, .p-sad   .mo.sad{display:block}
+  .p-cheer #armL{animation:waveL .42s ease-in-out infinite alternate; transform-origin:74px 118px}
+  .p-cheer #armR{animation:waveR .42s ease-in-out infinite alternate; transform-origin:126px 118px}
+  @keyframes waveL{from{transform:rotate(4deg)}to{transform:rotate(-30deg)}}
+  @keyframes waveR{from{transform:rotate(-4deg)}to{transform:rotate(30deg)}}
+  .p-wow #armL{transform:rotate(-38deg); transform-origin:74px 118px}
+  .p-wow #armR{transform:rotate(38deg);  transform-origin:126px 118px}
+  .p-worry #armL{transform:rotate(16deg); transform-origin:74px 118px}
+  .p-worry #armR{transform:rotate(-16deg); transform-origin:126px 118px}
+  .p-sad #head{transform:translateY(5px) rotate(-5deg); transform-origin:100px 90px}
+  #tail{animation:tail 1.8s ease-in-out infinite alternate; transform-origin:140px 140px}
+  @keyframes tail{from{transform:rotate(-6deg)}to{transform:rotate(12deg)}}
+
+  /* ── thanh kéo dưới ─────────────────────────────────── */
+  .slider{
+    flex:0 0 auto; height:58px; border-radius:14px; position:relative;
+    background:linear-gradient(#241c46,#181237); border:1px solid var(--panel-line);
+    display:flex; align-items:center; gap:6px; padding:0 6px;
+    box-shadow:0 6px 18px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.05)
+  }
+  .pulley{
+    width:44px; height:44px; flex:0 0 auto; border-radius:50%; cursor:pointer; border:2px solid #8a5c19;
+    background:radial-gradient(circle at 34% 30%, #ffe6a8, #e0a13a 55%, #9c6a1c);
+    color:#4a2c05; font-size:16px; font-weight:900; font-family:inherit;
+    display:grid; place-items:center;
+    box-shadow:0 3px 8px rgba(0,0,0,.45), inset 0 0 6px rgba(255,255,255,.5)
+  }
+  .pulley:active{transform:scale(.9)}
+  .track{
+    flex:1 1 auto; height:44px; position:relative; touch-action:none; cursor:grab;
+  }
+  .track .rope{
+    position:absolute; left:0; right:0; top:50%; height:14px; transform:translateY(-50%);
+    border-radius:7px; border:1px solid #6b4a16;
+    background:
+      repeating-linear-gradient(115deg, #c8913f 0 4px, #a4712b 4px 8px);
+    box-shadow:inset 0 2px 4px rgba(0,0,0,.4), 0 1px 0 rgba(255,255,255,.12)
+  }
+  .track .fill{
+    position:absolute; top:50%; left:0; height:14px; transform:translateY(-50%);
+    border-radius:7px; background:linear-gradient(90deg, rgba(255,208,106,.25), rgba(255,208,106,.05)); pointer-events:none
+  }
+  .knob{
+    position:absolute; top:50%; left:0; width:42px; height:42px; margin-left:-21px;
+    transform:translateY(-50%); border-radius:50%; border:2px solid #8a5c19;
+    background:radial-gradient(circle at 34% 28%, #fff3cf, #efb44f 52%, #a97324);
+    color:#4a2c05; font-size:17px; font-weight:900;
+    display:grid; place-items:center;
+    box-shadow:0 4px 12px rgba(0,0,0,.5), inset 0 0 8px rgba(255,255,255,.55);
+    transition:box-shadow .15s
+  }
+  .knob.drag{box-shadow:0 0 0 6px rgba(240,181,82,.22), 0 4px 12px rgba(0,0,0,.5), inset 0 0 8px rgba(255,255,255,.6)}
+  .slider .hint{
+    position:absolute; left:0; right:0; bottom:-1px; text-align:center;
+    font-size:8.5px; letter-spacing:.8px; color:var(--muted2); pointer-events:none
+  }
+
+  /* ── overlay / modal ────────────────────────────────── */
+  .veil{
+    position:fixed; inset:0; z-index:50; background:rgba(10,6,24,.82);
+    backdrop-filter:blur(3px); display:none; place-items:center; padding:18px
+  }
+  .veil.on{display:grid}
+  .card{
+    width:100%; max-width:340px; border-radius:18px; padding:18px 16px 16px;
+    background:linear-gradient(#272052,#1a1440); border:1px solid var(--panel-line);
+    box-shadow:0 20px 60px rgba(0,0,0,.6); text-align:center
+  }
+  .card h2{margin:0 0 4px; font-size:22px; letter-spacing:1px}
+  .card h2.win{background:linear-gradient(90deg,#ffd489,#ff9d5c);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .card p{margin:6px 0 12px; font-size:13px; color:var(--muted); line-height:1.5}
+  .card .nums{display:flex; gap:8px; margin:12px 0}
+  .card .nums .chip{padding:7px 6px}
+  .btn{
+    width:100%; border:0; border-radius:12px; padding:13px; margin-top:8px; cursor:pointer;
+    font-family:inherit; font-size:15px; font-weight:900; letter-spacing:.8px;
+    background:var(--panel2); color:var(--ink); border:1px solid var(--panel-line)
+  }
+  .btn.primary{
+    background:linear-gradient(#ffb54d,var(--orange2)); color:#fff; border:0;
+    box-shadow:0 4px 0 #b64a12, 0 8px 20px rgba(239,108,31,.4)
+  }
+  .btn:active{transform:translateY(2px)}
+  .rules{text-align:left; margin:10px 0 4px}
+  .rule{display:flex; gap:9px; align-items:flex-start; margin-bottom:9px; font-size:12.5px; line-height:1.45; color:#ddd5f5}
+  .rule .n{
+    flex:0 0 auto; width:21px;height:21px;border-radius:7px;background:var(--panel2);
+    border:1px solid var(--panel-line); display:grid;place-items:center;
+    font-size:11px;font-weight:900;color:var(--gold)
+  }
+  .rule b{color:#fff}
+
+  @media (max-height:680px){
+    .rail{width:88px}
+    .chip .v{font-size:17px}
+    .slider{height:52px}
+    .holo{min-height:76px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand"><span class="mk">▦</span>BLOCK <b>DROP</b></div>
+    <div class="grow"></div>
+    <button class="ibtn" id="btnSound" aria-label="Bật/tắt tiếng">🔊</button>
+    <button class="ibtn" id="btnPause" aria-label="Tạm dừng">⏸</button>
+    <button class="ibtn" id="btnHelp" aria-label="Hướng dẫn">?</button>
+  </header>
+
+  <div class="stats">
+    <div class="chip" id="chipScore"><span class="k">Score</span><span class="v" id="vScore">0</span></div>
+    <div class="chip" id="chipLevel"><span class="k">Level</span><span class="v" id="vLevel">1</span></div>
+    <div class="chip" id="chipLines"><span class="k">Lines</span><span class="v" id="vLines">0</span></div>
+  </div>
+
+  <div class="bars">
+    <div class="lv">
+      <div class="t">LEVEL <b id="vLvNum">1</b> · <span id="vLvProg">0 / 1000</span></div>
+      <div class="track"><i id="vLvFill"></i></div>
+    </div>
+    <button class="leafchip" id="leafChip" aria-label="Dùng gió lá">
+      <span class="ic">🍃</span><b id="vPower">×0</b><span class="frac" id="vLeaf">0/5</span>
+    </button>
+  </div>
+
+  <div class="stage">
+    <div class="boardbox" id="boardbox"><canvas id="board"></canvas></div>
+    <div class="rail" id="rail">
+      <div class="rail-lbl">NEXT</div>
+      <div class="panel next"><canvas id="next"></canvas></div>
+      <div class="panel combo" id="comboPanel"><span class="k">COMBO</span><b id="vCombo">×0</b></div>
+      <button class="drop" id="btnDrop"><span class="ar">↓</span>DROP</button>
+
+      <!-- hologram cổ vũ -->
+      <div class="holo p-idle" id="holo">
+        <div class="base"></div>
+        <div class="sparks" id="holoSparks"></div>
+        <div class="fig">
+          <svg viewBox="48 38 128 146" aria-hidden="true">
+            <defs>
+              <linearGradient id="gBody" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#d8f7ff" stop-opacity=".95"/>
+                <stop offset="1" stop-color="#63c8e8" stop-opacity=".7"/>
+              </linearGradient>
+              <linearGradient id="gFur" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#ffffff" stop-opacity=".95"/>
+                <stop offset="1" stop-color="#8fe0f5" stop-opacity=".8"/>
+              </linearGradient>
+            </defs>
+            <!-- đuôi -->
+            <path id="tail" d="M130 146c20 6 30-6 29-20-1-9-9-15-16-10-9 6-7 18-13 30z"
+                  fill="url(#gBody)" stroke="#eafcff" stroke-width="2" stroke-opacity=".7"/>
+            <!-- thân -->
+            <ellipse cx="100" cy="140" rx="34" ry="36" fill="url(#gBody)" stroke="#1d6f8c" stroke-width="2.2" stroke-opacity=".55"/>
+            <ellipse cx="100" cy="148" rx="21" ry="24" fill="url(#gFur)" opacity=".85"/>
+            <!-- tay -->
+            <g id="armL"><ellipse cx="70" cy="136" rx="11" ry="17" fill="url(#gBody)" stroke="#eafcff" stroke-width="2" stroke-opacity=".7"/></g>
+            <g id="armR"><ellipse cx="130" cy="136" rx="11" ry="17" fill="url(#gBody)" stroke="#eafcff" stroke-width="2" stroke-opacity=".7"/></g>
+            <!-- khăn -->
+            <path d="M74 108q26 14 52 0l-3 12q-23 11-46 0z" fill="#2bb8e0" opacity=".95" stroke="#eafcff" stroke-width="1.5" stroke-opacity=".8"/>
+            <g id="head">
+              <!-- tai -->
+              <ellipse cx="70" cy="62" rx="15" ry="17" fill="url(#gBody)" stroke="#eafcff" stroke-width="2" stroke-opacity=".7"/>
+              <ellipse cx="130" cy="62" rx="15" ry="17" fill="url(#gBody)" stroke="#eafcff" stroke-width="2" stroke-opacity=".7"/>
+              <ellipse cx="70" cy="63" rx="7" ry="8" fill="#bff2ff" opacity=".95"/>
+              <ellipse cx="130" cy="63" rx="7" ry="8" fill="#bff2ff" opacity=".95"/>
+              <!-- mặt -->
+              <ellipse cx="100" cy="84" rx="41" ry="36" fill="url(#gFur)" stroke="#1d6f8c" stroke-width="2.2" stroke-opacity=".5"/>
+              <ellipse cx="100" cy="95" rx="24" ry="19" fill="#ffffff" opacity=".75"/>
+              <!-- mắt: idle / cheer -->
+              <g class="mo idle">
+                <ellipse cx="86" cy="80" rx="6" ry="7" fill="#123049"/><ellipse cx="114" cy="80" rx="6" ry="7" fill="#123049"/>
+                <circle cx="88" cy="77" r="2" fill="#fff"/><circle cx="116" cy="77" r="2" fill="#fff"/>
+                <path d="M94 96q6 5 12 0" stroke="#123049" stroke-width="3" fill="none" stroke-linecap="round"/>
+              </g>
+              <g class="mo cheer">
+                <path d="M79 82q7-9 14 0" stroke="#123049" stroke-width="3.4" fill="none" stroke-linecap="round"/>
+                <path d="M107 82q7-9 14 0" stroke="#123049" stroke-width="3.4" fill="none" stroke-linecap="round"/>
+                <path d="M91 94q9 11 18 0q-9 4-18 0z" fill="#123049"/>
+                <ellipse cx="70" cy="93" rx="7" ry="4" fill="#ff9ec4" opacity=".8"/>
+                <ellipse cx="130" cy="93" rx="7" ry="4" fill="#ff9ec4" opacity=".8"/>
+              </g>
+              <g class="mo wow">
+                <circle cx="86" cy="79" r="9" fill="#123049"/><circle cx="114" cy="79" r="9" fill="#123049"/>
+                <circle cx="89" cy="75" r="3.4" fill="#fff"/><circle cx="117" cy="75" r="3.4" fill="#fff"/>
+                <ellipse cx="100" cy="98" rx="7" ry="9" fill="#123049"/>
+                <path d="M56 58l5 10 10 5-10 5-5 10-5-10-10-5 10-5z" fill="#fff59a" opacity=".95"/>
+                <path d="M146 54l4 8 8 4-8 4-4 8-4-8-8-4 8-4z" fill="#fff59a" opacity=".9"/>
+              </g>
+              <g class="mo worry">
+                <ellipse cx="86" cy="81" rx="6" ry="6" fill="#123049"/><ellipse cx="114" cy="81" rx="6" ry="6" fill="#123049"/>
+                <path d="M78 70l14 5M122 70l-14 5" stroke="#123049" stroke-width="3" stroke-linecap="round"/>
+                <path d="M92 98q8-6 16 0" stroke="#123049" stroke-width="3" fill="none" stroke-linecap="round"/>
+                <path d="M136 74q6 8 0 16" stroke="#9fe8ff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".9"/>
+              </g>
+              <g class="mo sad">
+                <path d="M80 84q6-7 12 0" stroke="#123049" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+                <path d="M108 84q6-7 12 0" stroke="#123049" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+                <path d="M92 100q8-7 16 0" stroke="#123049" stroke-width="3" fill="none" stroke-linecap="round"/>
+                <path d="M120 88q3 8 0 12" stroke="#9fe8ff" stroke-width="3" stroke-linecap="round" fill="none"/>
+              </g>
+            </g>
+          </svg>
+        </div>
+        <div class="say" id="holoSay">Cùng chơi nhé!</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slider" id="slider">
+    <button class="pulley" id="pulL" aria-label="Sang trái">◀</button>
+    <div class="track" id="track">
+      <div class="rope"></div>
+      <div class="fill" id="trackFill"></div>
+      <div class="knob" id="knob">↔</div>
+    </div>
+    <button class="pulley" id="pulR" aria-label="Sang phải">▶</button>
+    <div class="hint">KÉO ĐỂ CHỌN CỘT · CHẠM BÀN ĐỂ QUAY</div>
+  </div>
+</div>
+
+<!-- bắt đầu -->
+<div class="veil on" id="veilStart">
+  <div class="card">
+    <h2 class="win">BLOCK DROP</h2>
+    <p>Kéo <b>thanh dưới</b> để chọn cột, khối tự trượt tới rồi rơi xuống.<br>Dọn hàng ăn <b>PERFECT</b> — bạn hologram sẽ cổ vũ bạn.</p>
+    <div class="nums">
+      <div class="chip"><span class="k">Kỷ lục</span><span class="v" id="sBest">0</span></div>
+      <div class="chip"><span class="k">Combo tốt nhất</span><span class="v" id="sCombo">0</span></div>
+    </div>
+    <button class="btn primary" id="btnStart">BẮT ĐẦU</button>
+    <button class="btn" id="btnHelp2">HƯỚNG DẪN</button>
+  </div>
+</div>
+
+<!-- kết thúc -->
+<div class="veil" id="veilOver">
+  <div class="card">
+    <h2 id="overTitle">HẾT LƯỢT</h2>
+    <p id="overMsg">Ván sau ăn to hơn!</p>
+    <div class="nums">
+      <div class="chip"><span class="k">Điểm</span><span class="v" id="oScore">0</span></div>
+      <div class="chip"><span class="k">Hàng</span><span class="v" id="oLines">0</span></div>
+      <div class="chip"><span class="k">Combo</span><span class="v" id="oCombo">0</span></div>
+    </div>
+    <div class="nums"><div class="chip"><span class="k">Kỷ lục</span><span class="v" id="oBest">0</span></div></div>
+    <button class="btn primary" id="btnAgain">CHƠI LẠI</button>
+  </div>
+</div>
+
+<!-- tạm dừng -->
+<div class="veil" id="veilPause">
+  <div class="card">
+    <h2>TẠM DỪNG</h2>
+    <p>Nghỉ tay chút cũng được, khối vẫn ở đó.</p>
+    <button class="btn primary" id="btnResume">TIẾP TỤC</button>
+    <button class="btn" id="btnQuit">VÁN MỚI</button>
+  </div>
+</div>
+
+<!-- hướng dẫn -->
+<div class="veil" id="veilHelp">
+  <div class="card">
+    <h2>CÁCH CHƠI</h2>
+    <div class="rules">
+      <div class="rule"><div class="n">1</div><div><b>Kéo núm vàng</b> trên thanh dưới để chọn cột. Khối đang rơi tự trượt tới đó. Chạm hai <b>bánh vàng</b> hai đầu để nhích 1 cột.</div></div>
+      <div class="rule"><div class="n">2</div><div><b>Chạm vào bàn</b> để quay khối. Bấm <b>DROP</b> để thả nhanh (+2 điểm mỗi ô).</div></div>
+      <div class="rule"><div class="n">3</div><div>Xếp đầy một hàng để dọn. Dọn liên tiếp được <b>COMBO</b>; dọn 4 hàng một lượt là <b>TETRIS</b>; dọn sạch bàn là <b>ALL CLEAR</b> +2000.</div></div>
+      <div class="rule"><div class="n">4</div><div>Ô có <b>🍃 lá</b> nằm trong hàng được dọn sẽ vào túi. Đủ <b>5 lá</b> được 1 lượt <b>gió lá</b> — bấm chip lá để thổi bay 2 hàng dưới cùng.</div></div>
+      <div class="rule"><div class="n">5</div><div>Cứ <b>1000 điểm</b> lên 1 level, khối rơi nhanh hơn. Bàn gần đầy thì viền đỏ nhấp nháy.</div></div>
+    </div>
+    <button class="btn primary" id="btnHelpClose">RÕ RỒI</button>
+  </div>
+</div>
+
+<script>window.ARCADE_GAME_ID = "blockdrop";</script>
+<script src="vendor/arcade.js"></script>
+<script src="arcade-bridge.js"></script>
+<script src="engine.js"></script>
+<script src="sfx.js"></script>
+<script src="hologram.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

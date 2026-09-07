@@ -1,0 +1,13 @@
+{
+  "name": "blockdrop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Block Drop — xếp khối bằng thanh kéo, có hologram cổ vũ",
+  "//": "type=commonjs để ghi đè games/package.json (type=module) — engine.js phải chạy được cả trong browser (script tag) lẫn node (test).",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "license": "MIT"
+}
